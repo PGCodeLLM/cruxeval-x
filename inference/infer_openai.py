@@ -175,7 +175,8 @@ if __name__ == '__main__':
                 cur_res["generation"] = cur_res["generation"].split("[ANSWER]")[-1]
                 cur_res["generation"] = cur_res["generation"].replace("[/ANSWER","")
             # judege whether the answer is right
-            outputs = [{"id":i,"res":0} for i in range(num_tasks_per_language)]
+            # Use dict instead of list to handle non-sequential task IDs
+            outputs = {}
             for index,cur_res in tqdm(enumerate(gen_res),total=len(gen_res)):
                 answer = cur_res["generation"].strip()
                 cur_id = cur_res["task_id"]
@@ -187,19 +188,28 @@ if __name__ == '__main__':
                     code = code.replace(input_map[lang], answer)
                 exec_output = eval_code(lang_map[lang], code)
                 if exec_output["status"] != "OK":
-                    outputs[cur_id]["res"] = False
-                    outputs[cur_id]["error"] = exec_output["status"]
-                    outputs[cur_id]["error_message"] = exec_output["stderr"]
-                    outputs[cur_id]["code"] = code
-                    outputs[cur_id]["answer"] = answer
+                    outputs[cur_id] = {
+                        "id": cur_id,
+                        "res": False,
+                        "error": exec_output["status"],
+                        "error_message": exec_output["stderr"],
+                        "code": code,
+                        "answer": answer
+                    }
                 else:
-                    outputs[cur_id]["res"] = True
-                    outputs[cur_id]["code"] = code
-                    outputs[cur_id]["answer"] = answer
+                    outputs[cur_id] = {
+                        "id": cur_id,
+                        "res": True,
+                        "code": code,
+                        "answer": answer
+                    }
+
+            # Convert dict to list sorted by ID for output
+            outputs_list = [outputs[task_id] for task_id in sorted(outputs.keys())]
 
             output_file = f"{args.output_dir}/{lang}_{task_type}.json"
             with open(output_file,"w",encoding="utf-8") as f:
-                json.dump(outputs,f,indent=4,ensure_ascii=False)
+                json.dump(outputs_list,f,indent=4,ensure_ascii=False)
             print(f"Results saved to: {output_file}")
 
     # Mark progress as complete
