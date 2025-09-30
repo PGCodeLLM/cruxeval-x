@@ -64,7 +64,7 @@ if __name__ == '__main__':
     parser.add_argument("--api_key", type=str, default="")
     parser.add_argument("--base_url", type=str, default="")
     parser.add_argument('--tmp', type=float, default=0, help='Temperature')
-    parser.add_argument('--tot_data_num', type=int, default=800)
+    parser.add_argument('--tot_data_num', type=int, default=800, help='Number of samples per language (default: 800 for full eval, use 3 for quick test)')
 
     # Inference parameters
     parser.add_argument('--top_p', type=float, default=None, help='Top-p (nucleus sampling)')
@@ -102,6 +102,11 @@ if __name__ == '__main__':
 
     num_tasks_per_language = len(read_data(f"{args.data_root}/py.json")) # all hte languages have same number of tasks so we just take the python tasks number
 
+    # Limit number of samples if tot_data_num is specified
+    if args.tot_data_num < num_tasks_per_language:
+        num_tasks_per_language = args.tot_data_num
+        print(f"Limiting to {num_tasks_per_language} samples per language")
+
     # Calculate total tasks for progress tracking
     args.total_tasks = len(langs) * num_tasks_per_language * 2  # 2 tasks (input + output) per language
     current_progress = 0
@@ -111,6 +116,8 @@ if __name__ == '__main__':
     print(f"Progress file: {args.progress_file}")
     for lang in langs:
         ds_data = read_data(f"{args.data_root}/{lang}.json")
+        # Limit to first N samples
+        ds_data = ds_data[:num_tasks_per_language]
         ds_data_input_output = load_dataset("json",data_files=f"{args.data_input_output}/{lang}.jsonl")["train"]
         example_data = read_data(f"{args.example_root}/{lang}.json")
         example_data_input_output = load_dataset("json",data_files=f"{args.example_input_output}/{lang}.jsonl")["train"]
@@ -163,7 +170,7 @@ if __name__ == '__main__':
                 cur_res["generation"] = cur_res["generation"].split("[ANSWER]")[-1]
                 cur_res["generation"] = cur_res["generation"].replace("[/ANSWER","")
             # judege whether the answer is right
-            outputs = [{"id":i,"res":0} for i in range(800)]
+            outputs = [{"id":i,"res":0} for i in range(num_tasks_per_language)]
             for index,cur_res in tqdm(enumerate(gen_res),total=len(gen_res)):
                 answer = cur_res["generation"].strip()
                 cur_id = cur_res["task_id"]
