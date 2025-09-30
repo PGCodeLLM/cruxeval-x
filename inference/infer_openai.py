@@ -31,7 +31,8 @@ def gen_result(examples, model: str, args, progress_file, current_progress):
     """
     stop = ["[/ANSWER]"]
     prompts = [ex["prompt"] for ex in examples]
-    for i in tqdm(range(len(examples)),total= len(examples)):
+    print(f"  [Inference] Calling vLLM API for {len(examples)} samples...")
+    for i in tqdm(range(len(examples)),total= len(examples), desc="  Generating predictions"):
         examples[i]['generation'] = gpt_response(
             prompts[i],
             api_key=args.api_key,
@@ -177,7 +178,8 @@ if __name__ == '__main__':
             # judege whether the answer is right
             # Use dict instead of list to handle non-sequential task IDs
             outputs = {}
-            for index,cur_res in tqdm(enumerate(gen_res),total=len(gen_res)):
+            print(f"  [Evaluation] Executing code in {lang} runtime for {len(gen_res)} samples...")
+            for index,cur_res in tqdm(enumerate(gen_res),total=len(gen_res), desc="  Evaluating code"):
                 answer = cur_res["generation"].strip()
                 cur_id = cur_res["task_id"]
                 code = cur_prompt[index]["prompt"][-1]["content"].split(f"```{lang}")[-1]
