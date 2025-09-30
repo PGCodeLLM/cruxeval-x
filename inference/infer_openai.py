@@ -1,12 +1,13 @@
 import json
-from transformers import AutoTokenizer
 import argparse
+import json
+import os
+import time
+from transformers import AutoTokenizer
 from datasets import load_dataset
 from prompt import crux_input_prompt_chat,crux_output_prompt_chat
 from untils import eval_code,lang_map,input_map,iterating_stops,gpt_response
-import json
 from tqdm import tqdm
-import os
 
 
 def read_data(file_path):
@@ -45,15 +46,13 @@ def gen_result(examples, model: str, args, progress_file, current_progress):
             repetition_penalty=args.repetition_penalty if args.repetition_penalty else None
         )
 
-        # Write progress every 10 samples or on last sample
-        if (i + 1) % 10 == 0 or i == len(examples) - 1:
-            current_progress += 10 if (i + 1) % 10 == 0 else (i + 1) % 10
-            with open(progress_file, 'w') as f:
-                json.dump({
-                    "done": current_progress,
-                    "total": args.total_tasks,
-                    "timestamp": time.time()
-                }, f)
+        current_progress += 1
+        with open(progress_file, 'w') as f:
+            json.dump({
+                "done": current_progress,
+                "total": args.total_tasks,
+                "timestamp": time.time()
+            }, f)
 
     return examples, current_progress
 
@@ -101,8 +100,10 @@ if __name__ == '__main__':
         except:
             langs = [args.langs.strip()]
 
+    num_tasks_per_language = len(read_data(f"{args.data_root}/py.json")) # all hte languages have same number of tasks so we just take the python tasks number
+
     # Calculate total tasks for progress tracking
-    args.total_tasks = len(langs) * 800 * 2  # 2 tasks (input + output) per language
+    args.total_tasks = len(langs) * num_tasks_per_language * 2  # 2 tasks (input + output) per language
     current_progress = 0
 
     print(f"Running CruXEval-X for languages: {langs}")
