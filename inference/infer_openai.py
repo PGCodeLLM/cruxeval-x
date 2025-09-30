@@ -107,17 +107,23 @@ if __name__ == '__main__':
         num_tasks_per_language = args.tot_data_num
         print(f"Limiting to {num_tasks_per_language} samples per language")
 
-    # Calculate total tasks for progress tracking
-    args.total_tasks = len(langs) * num_tasks_per_language * 2  # 2 tasks (input + output) per language
+    # Load and filter data once for all languages
+    lang_datasets = {}
+    for lang in langs:
+        ds_data = read_data(f"{args.data_root}/{lang}.json")
+        # Limit to first N samples (filter out samples without "code" field)
+        valid_samples = [s for s in ds_data if "code" in s]
+        lang_datasets[lang] = valid_samples[:num_tasks_per_language]
+
+    args.total_tasks = sum(len(ds) for ds in lang_datasets.values()) * 2  # 2 tasks (input + output) per sample
     current_progress = 0
 
     print(f"Running CruXEval-X for languages: {langs}")
     print(f"Total tasks: {args.total_tasks}")
     print(f"Progress file: {args.progress_file}")
     for lang in langs:
-        ds_data = read_data(f"{args.data_root}/{lang}.json")
-        # Limit to first N samples
-        ds_data = ds_data[:num_tasks_per_language]
+        ds_data = lang_datasets[lang]
+        print(f"  {lang}: {len(ds_data)} valid samples (requested: {num_tasks_per_language})")
         ds_data_input_output = load_dataset("json",data_files=f"{args.data_input_output}/{lang}.jsonl")["train"]
         example_data = read_data(f"{args.example_root}/{lang}.json")
         example_data_input_output = load_dataset("json",data_files=f"{args.example_input_output}/{lang}.jsonl")["train"]
@@ -147,7 +153,6 @@ if __name__ == '__main__':
 
             cur_prompt = [] # {"prompt":prompt,"task_id":task_id}
             for sample in ds_data:
-                if "code" not in sample: continue
                 code = sample["code"]
                 flag = False
                 for stop in iterating_stops[lang]:
