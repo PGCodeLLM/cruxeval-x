@@ -75,26 +75,66 @@ def get_examples(ds_right,ds_python,shot_num):
         examples_id.append(sample["id"])
     return examples[:shot_num],examples_id[:shot_num]
 
-def gpt_response(message,api_key,model_name,tmp=0,stop=[],base_url="",max_tokens=1024):
+def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_completion_tokens=None,
+                top_p=None, top_k=None, presence_penalty=None, repetition_penalty=None):
+    """
+    Call OpenAI-compatible API with inference parameters.
+
+    Args:
+        message: Chat messages
+        api_key: API key
+        model_name: Model name
+        tmp: Temperature
+        stop: Stop sequences
+        base_url: Base URL for API
+        max_completion_tokens: Max completion tokens (preferred over deprecated max_tokens)
+        top_p: Nucleus sampling parameter
+        top_k: Top-k sampling parameter
+        presence_penalty: Presence penalty
+        repetition_penalty: Repetition penalty (mapped to frequency_penalty for OpenAI API)
+
+    Returns:
+        Generated text
+    """
     if base_url == "":
         client = OpenAI(api_key=api_key)
     else:
-        client = OpenAI(api_key=api_key,base_url=base_url)
-        
+        client = OpenAI(api_key=api_key, base_url=base_url)
+
+    # Build kwargs for API call
+    kwargs = {
+        "model": model_name,
+        "messages": message,
+        "temperature": tmp,
+        "stop": stop,
+    }
+
+    # Add max_completion_tokens if provided (preferred over deprecated max_tokens)
+    if max_completion_tokens is not None:
+        kwargs["max_completion_tokens"] = max_completion_tokens
+
+    # Add optional parameters if provided
+    if top_p is not None:
+        kwargs["top_p"] = top_p
+    if presence_penalty is not None:
+        kwargs["presence_penalty"] = presence_penalty
+    # OpenAI API uses frequency_penalty, not repetition_penalty
+    if repetition_penalty is not None:
+        kwargs["frequency_penalty"] = repetition_penalty
+
+    # Note: top_k is not supported by OpenAI API, but may be supported by vLLM
+    # vLLM supports it as an extra_body parameter
+    if top_k is not None:
+        kwargs["extra_body"] = {"top_k": top_k}
+
     flag = 0
     while flag != 1:
         try:
-            completion = client.chat.completions.create(
-                model=model_name,
-                messages=message,
-                temperature=tmp,
-                stop=stop,
-                max_tokens=max_tokens,
-            )
+            completion = client.chat.completions.create(**kwargs)
             flag = 1
-            
+
         except Exception as err:
-            print("error : ",err)
+            print("error : ", err)
             flag = 0
             time.sleep(1)
     return completion.choices[0].message.content
