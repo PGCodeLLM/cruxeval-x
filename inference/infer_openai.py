@@ -101,12 +101,8 @@ if __name__ == '__main__':
         except:
             langs = [args.langs.strip()]
 
-    num_tasks_per_language = len(read_data(f"{args.data_root}/py.json")) # all hte languages have same number of tasks so we just take the python tasks number
-
     # Limit number of samples if tot_data_num is specified
-    if args.tot_data_num < num_tasks_per_language:
-        num_tasks_per_language = args.tot_data_num
-        print(f"Limiting to {num_tasks_per_language} samples per language")
+    print(f"Limiting to {args.tot_data_num} samples per language at maximum")
 
     # Load and filter data once for all languages
     lang_datasets = {}
@@ -114,7 +110,7 @@ if __name__ == '__main__':
         ds_data = read_data(f"{args.data_root}/{lang}.json")
         # Limit to first N samples (filter out samples without "code" field)
         valid_samples = [s for s in ds_data if "code" in s]
-        lang_datasets[lang] = valid_samples[:num_tasks_per_language]
+        lang_datasets[lang] = valid_samples[:args.tot_data_num]
 
     args.total_tasks = sum(len(ds) for ds in lang_datasets.values()) * 2  # 2 tasks (input + output) per sample
     current_progress = 0
@@ -124,7 +120,7 @@ if __name__ == '__main__':
     print(f"Progress file: {args.progress_file}")
     for lang in langs:
         ds_data = lang_datasets[lang]
-        print(f"  {lang}: {len(ds_data)} valid samples (requested: {num_tasks_per_language})")
+        print(f"  {lang}: {len(ds_data)} valid samples (requested: {args.tot_data_num})")
         ds_data_input_output = load_dataset("json",data_files=f"{args.data_input_output}/{lang}.jsonl")["train"]
         example_data = read_data(f"{args.example_root}/{lang}.json")
         example_data_input_output = load_dataset("json",data_files=f"{args.example_input_output}/{lang}.jsonl")["train"]

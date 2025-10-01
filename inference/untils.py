@@ -87,7 +87,7 @@ def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_
         tmp: Temperature
         stop: Stop sequences
         base_url: Base URL for API
-        max_completion_tokens: Max completion tokens (preferred over deprecated max_tokens)
+        max_completion_tokens: Max completion tokens
         top_p: Nucleus sampling parameter
         top_k: Top-k sampling parameter
         presence_penalty: Presence penalty
@@ -122,8 +122,7 @@ def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_
     if repetition_penalty is not None:
         kwargs["frequency_penalty"] = repetition_penalty
 
-    # Note: top_k is not supported by OpenAI API, but may be supported by vLLM
-    # vLLM supports it as an extra_body parameter
+    # top_k should be passed in extra_body
     if top_k is not None:
         kwargs["extra_body"] = {"top_k": top_k}
 
