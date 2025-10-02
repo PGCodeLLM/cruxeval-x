@@ -91,7 +91,7 @@ def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_
         top_p: Nucleus sampling parameter
         top_k: Top-k sampling parameter
         presence_penalty: Presence penalty
-        repetition_penalty: Repetition penalty (mapped to frequency_penalty for OpenAI API)
+        repetition_penalty: Repetition penalty
 
     Returns:
         Generated text
@@ -113,18 +113,20 @@ def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_
     if max_completion_tokens is not None:
         kwargs["max_completion_tokens"] = max_completion_tokens
 
+    extra_body = {}
+
     # Add optional parameters if provided
     if top_p is not None:
         kwargs["top_p"] = top_p
     if presence_penalty is not None:
         kwargs["presence_penalty"] = presence_penalty
-    # OpenAI API uses frequency_penalty, not repetition_penalty
     if repetition_penalty is not None:
-        kwargs["frequency_penalty"] = repetition_penalty
-
-    # top_k should be passed in extra_body
+        extra_body["repetition_penalty"] = repetition_penalty
     if top_k is not None:
-        kwargs["extra_body"] = {"top_k": top_k}
+        extra_body["top_k"] = {"top_k": top_k}
+
+    if extra_body:
+        kwargs["extra_body"] = extra_body
 
     flag = 0
     while flag != 1:
