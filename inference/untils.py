@@ -4,6 +4,7 @@ import os
 import sys
 from simhash import Simhash
 import re
+import json
 current_dir = os.path.dirname(os.path.abspath(__file__))
 mutipl_dir = os.path.join(current_dir, "../MutiPL-E", "evaluation/src")
 sys.path.append(mutipl_dir)
@@ -76,7 +77,7 @@ def get_examples(ds_right,ds_python,shot_num):
     return examples[:shot_num],examples_id[:shot_num]
 
 def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_completion_tokens=None,
-                top_p=None, top_k=None, presence_penalty=None, repetition_penalty=None):
+                top_p=None, top_k=None, presence_penalty=None, repetition_penalty=None, stream=None, extra_body=None, extra_headers=None):
     """
     Call OpenAI-compatible API with inference parameters.
 
@@ -92,6 +93,9 @@ def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_
         top_k: Top-k sampling parameter
         presence_penalty: Presence penalty
         repetition_penalty: Repetition penalty
+        stream: Whether to stream results
+        extra_body: Extra body parameters (JSON string) - use for model-specific params
+        extra_headers: Extra headers (JSON string)
 
     Returns:
         Generated text
@@ -113,7 +117,8 @@ def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_
     if max_completion_tokens is not None:
         kwargs["max_completion_tokens"] = max_completion_tokens
 
-    extra_body = {}
+    extra_body = json.loads(extra_body) if extra_body else {}
+    extra_headers = json.loads(extra_headers) if extra_headers else {}
 
     # Add optional parameters if provided
     if top_p is not None:
@@ -123,22 +128,38 @@ def gpt_response(message, api_key, model_name, tmp=0, stop=[], base_url="", max_
     if repetition_penalty is not None:
         extra_body["repetition_penalty"] = repetition_penalty
     if top_k is not None:
-        extra_body["top_k"] = {"top_k": top_k}
+        extra_body["top_k"] = top_k
 
     if extra_body:
         kwargs["extra_body"] = extra_body
+    if extra_headers:
+        kwargs["extra_headers"] = extra_headers
 
     flag = 0
     while flag != 1:
         try:
-            completion = client.chat.completions.create(**kwargs)
-            flag = 1
+            if stream:
+                # Handle streaming response
+                kwargs["stream"] = True
+                stream_response = client.chat.completions.create(**kwargs)
+
+                accumulated_content = ""
+                for chunk in stream_response:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        accumulated_content += chunk.choices[0].delta.content
+
+                flag = 1
+                return accumulated_content
+            else:
+                # Handle non-streaming response
+                completion = client.chat.completions.create(**kwargs)
+                flag = 1
+                return completion.choices[0].message.content
 
         except Exception as err:
             print("error : ", err)
             flag = 0
             time.sleep(1)
-    return completion.choices[0].message.content
 
 input_map = {
     "cpp":"candidate(????)",

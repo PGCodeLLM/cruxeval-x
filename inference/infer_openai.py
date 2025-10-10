@@ -15,7 +15,7 @@ def read_data(file_path):
         data = json.load(f)
     return data
 
-def gen_result(examples, model: str, args, progress_file, current_progress):
+def gen_result(examples, args, progress_file, current_progress):
     """
     Generate results with progress tracking.
 
@@ -44,7 +44,10 @@ def gen_result(examples, model: str, args, progress_file, current_progress):
             top_p=args.top_p if args.top_p else None,
             top_k=args.top_k if args.top_k else None,
             presence_penalty=args.presence_penalty if args.presence_penalty else None,
-            repetition_penalty=args.repetition_penalty if args.repetition_penalty else None
+            repetition_penalty=args.repetition_penalty if args.repetition_penalty else None,
+            stream=args.stream if args.stream else None,
+            extra_body=args.extra_body if args.extra_body else None,
+            extra_headers=args.extra_headers if args.extra_headers else None
         )
 
         current_progress += 1
@@ -73,6 +76,10 @@ if __name__ == '__main__':
     parser.add_argument('--max_output_tokens', type=int, default=None, help='Max output tokens')
     parser.add_argument('--presence_penalty', type=float, default=None, help='Presence penalty')
     parser.add_argument('--repetition_penalty', type=float, default=None, help='Repetition penalty')
+    parser.add_argument('--stream', action='store_true', help='Enable streaming')
+    parser.add_argument('--extra_body', type=str, default=None, help='Extra body parameters as JSON string (use for model-specific params like chat_template_kwargs)')
+    parser.add_argument('--extra_headers', type=str, default=None, help='Extra headers as JSON string')
+    parser.add_argument('--debug', action='store_true', help='Debug mode: limit inference to 10 samples per language')
 
     parser.add_argument('--data_root', type=str, default=f'./datasets/cruxeval-x')
     parser.add_argument('--data_input_output', type=str, default=f'./datasets/cruxeval_preprocessed')
@@ -84,6 +91,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
+
+    # Debug mode: limit to 10 samples per language
+    if args.debug:
+        args.tot_data_num = 10
+        print(f"[DEBUG MODE] Limiting to {args.tot_data_num} samples per language")
 
     # Parse languages - support multiple formats
     ALL_LANGS = ['py', 'java', 'cpp', 'cs', 'd', 'go', 'jl', 'js', 'lua',
