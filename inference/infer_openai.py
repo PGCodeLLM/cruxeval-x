@@ -53,7 +53,7 @@ def gen_result(examples, args, progress_file, current_progress):
         current_progress += 1
         with open(progress_file, 'w') as f:
             json.dump({
-                "done": current_progress,
+                "n": current_progress,
                 "total": args.total_tasks,
                 "timestamp": time.time()
             }, f)
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     if args.progress_file:
         with open(args.progress_file, 'w') as f:
             json.dump({
-                "done": args.total_tasks,
+                "n": args.total_tasks,
                 "total": args.total_tasks,
                 "timestamp": time.time(),
                 "status": "completed"
